@@ -34,12 +34,16 @@ spec:
         spec:
           description: AtSpec defines the desired state of At
           properties:
-            foo:
-              description: Foo is an example field of At. Edit At_types.go to remove/update
+            command:
+              type: string
+            schedule:
               type: string
           type: object
         status:
           description: AtStatus defines the observed state of At
+          properties:
+            phase:
+              type: string
           type: object
       type: object
   version: v1alpha1

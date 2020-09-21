@@ -3,5 +3,5 @@ kind: At
 metadata:
   name: at-sample
 spec:
-  # Add fields here
-  foo: bar
+  schedule: "2019-04-12T10:12:00Z"
+  command: "echo YAY!"
