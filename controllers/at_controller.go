@@ -18,13 +18,17 @@ package controllers
 
 import (
 	"context"
+	"fmt"
+	"time"
 
 	"github.com/go-logr/logr"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	cnatv1alpha1 "cnat/api/v1alpha1"
+	"cnat/pkg/schedule"
 )
 
 // AtReconciler reconciles a At object
@@ -38,10 +42,61 @@ type AtReconciler struct {
 // +kubebuilder:rbac:groups=cnat.ishankhare.dev,resources=ats/status,verbs=get;update;patch
 
 func (r *AtReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
-	_ = context.Background()
-	_ = r.Log.WithValues("at", req.NamespacedName)
+	reqLogger := r.Log.WithValues("at", req.NamespacedName)
+	reqLogger.Info("=== Reconciling At")
 
 	// your logic here
+
+	instance := &cnatv1alpha1.At{}
+	err := r.Get(context.TODO(), req.NamespacedName, instance)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			// object not found, could have been deleted after
+			// reconcile request, hence don't requeue
+			return ctrl.Result{}, nil
+		}
+
+		// error reading the object, requeue the request
+		return ctrl.Result{}, err
+	}
+
+	// if no phase set, default to Pending
+	if instance.Status.Phase == "" {
+		instance.Status.Phase = cnatv1alpha1.PhasePending
+	}
+
+	// state transition PENDING -> RUNNING -> DONE
+	switch instance.Status.Phase {
+	case cnatv1alpha1.PhasePending:
+		reqLogger.Info("Phase: PENDING")
+
+		diff, err := schedule.TimeUntilSchedule(instance.Spec.Schedule)
+		if err != nil {
+			reqLogger.Error(err, "Schedule parsing failure")
+
+			return ctrl.Result{}, err
+		}
+
+		reqLogger.Info("Schedule parsing done", "Result", fmt.Sprintf("%v", diff))
+
+		if diff > 0 {
+			// not yet time to execute, wait until scheduled time
+			return ctrl.Result{RequeueAfter: diff * time.Second}, nil
+		}
+
+		reqLogger.Info("It's time!", "Ready to execute", instance.Spec.Command)
+		// change state
+		instance.Status.Phase = cnatv1alpha1.PhaseRunning
+	default:
+		reqLogger.Info("NOP")
+		return ctrl.Result{}, nil
+	}
+
+	// update status
+	err = r.Update(context.TODO(), instance)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
 
 	return ctrl.Result{}, nil
 }
