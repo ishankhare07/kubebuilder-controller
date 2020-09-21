@@ -1,0 +1,24 @@
+# permissions for end users to edit ats.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: at-editor-role
+rules:
+- apiGroups:
+  - cnat.ishankhare.dev
+  resources:
+  - ats
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - cnat.ishankhare.dev
+  resources:
+  - ats/status
+  verbs:
+  - get

@@ -1,0 +1,7 @@
+apiVersion: cnat.ishankhare.dev/v1alpha1
+kind: At
+metadata:
+  name: at-sample
+spec:
+  # Add fields here
+  foo: bar
