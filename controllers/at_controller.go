@@ -125,10 +125,13 @@ func (r *AtReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 			// reconcile without error
 			return ctrl.Result{RequeueAfter: 500 * time.Millisecond}, nil
 		}
-
+	case cnatv1alpha1.PhaseDone:
+		reqLogger.Info("Phase: DONE")
+		// reconcile without requeuing
+		return ctrl.Result{}, nil
 	default:
 		reqLogger.Info("NOP")
-		return ctrl.Result{}, nil
+		return ctrl.Result{RequeueAfter: 500 * time.Millisecond}, nil
 	}
 
 	// update status
@@ -137,7 +140,7 @@ func (r *AtReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		return ctrl.Result{}, err
 	}
 
-	return ctrl.Result{}, nil
+	return ctrl.Result{RequeueAfter: 500 * time.Millisecond}, nil
 }
 
 func (r *AtReconciler) SetupWithManager(mgr ctrl.Manager) error {
