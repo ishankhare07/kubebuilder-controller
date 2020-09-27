@@ -29,6 +29,7 @@ import (
 
 	cnatv1alpha1 "cnat/api/v1alpha1"
 	"cnat/pkg/schedule"
+	"cnat/pkg/spawn"
 )
 
 // AtReconciler reconciles a At object
@@ -89,6 +90,14 @@ func (r *AtReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		instance.Status.Phase = cnatv1alpha1.PhaseRunning
 	case cnatv1alpha1.PhaseRunning:
 		reqLogger.Info("Phase: RUNNING")
+
+		pod := spawn.NewPodForCR(instance)
+		err := ctrl.SetControllerReference(instance, pod, r.Scheme)
+		if err != nil {
+			// requeue with error
+			return ctrl.Result{}, err
+		}
+
 	default:
 		reqLogger.Info("NOP")
 		return ctrl.Result{}, nil
