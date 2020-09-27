@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -96,6 +97,33 @@ func (r *AtReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		if err != nil {
 			// requeue with error
 			return ctrl.Result{}, err
+		}
+
+		query := &corev1.Pod{}
+		// try to see if the pod already exists
+		err = r.Get(context.TODO(), req.NamespacedName, query)
+		if err != nil && errors.IsNotFound(err) {
+			// does not exist, create a pod
+			err = r.Create(context.TODO(), pod)
+			if err != nil {
+				return ctrl.Result{}, err
+			}
+
+			// Successfully created a Pod
+			reqLogger.Info("Pod Created successfully", "name", pod.Name)
+			return ctrl.Result{Requeue: true}, nil
+		} else if err != nil {
+			// requeue with err
+			return ctrl.Result{}, err
+		} else if query.Status.Phase == corev1.PodFailed ||
+			query.Status.Phase == corev1.PodSucceeded {
+			// pod already finished or errored out`
+			reqLogger.Info("Container terminated", "reason", query.Status.Reason,
+				"message", query.Status.Message)
+			instance.Status.Phase = cnatv1alpha1.PhaseDone
+		} else {
+			// reconcile without error
+			return ctrl.Result{RequeueAfter: 500 * time.Millisecond}, nil
 		}
 
 	default:
