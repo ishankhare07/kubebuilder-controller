@@ -87,6 +87,8 @@ func (r *AtReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		reqLogger.Info("It's time!", "Ready to execute", instance.Spec.Command)
 		// change state
 		instance.Status.Phase = cnatv1alpha1.PhaseRunning
+	case cnatv1alpha1.PhaseRunning:
+		reqLogger.Info("Phase: RUNNING")
 	default:
 		reqLogger.Info("NOP")
 		return ctrl.Result{}, nil
