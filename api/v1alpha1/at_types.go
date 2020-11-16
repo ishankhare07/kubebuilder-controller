@@ -47,6 +47,7 @@ type AtStatus struct {
 }
 
 // +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
 
 // At is the Schema for the ats API
 type At struct {
