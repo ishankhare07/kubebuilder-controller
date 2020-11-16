@@ -111,9 +111,10 @@ func (r *AtReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 
 			// Successfully created a Pod
 			reqLogger.Info("Pod Created successfully", "name", pod.Name)
-			return ctrl.Result{Requeue: true}, nil
+			return ctrl.Result{}, nil
 		} else if err != nil {
 			// requeue with err
+			reqLogger.Error(err, "cannot create pod")
 			return ctrl.Result{}, err
 		} else if query.Status.Phase == corev1.PodFailed ||
 			query.Status.Phase == corev1.PodSucceeded {
@@ -122,8 +123,9 @@ func (r *AtReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 				"message", query.Status.Message)
 			instance.Status.Phase = cnatv1alpha1.PhaseDone
 		} else {
-			// reconcile without error
-			return ctrl.Result{RequeueAfter: 500 * time.Millisecond}, nil
+			// don't requeue, it will happen automatically when
+			// pod status changes
+			return ctrl.Result{}, nil
 		}
 	case cnatv1alpha1.PhaseDone:
 		reqLogger.Info("Phase: DONE")
@@ -131,20 +133,27 @@ func (r *AtReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		return ctrl.Result{}, nil
 	default:
 		reqLogger.Info("NOP")
-		return ctrl.Result{RequeueAfter: 500 * time.Millisecond}, nil
+		return ctrl.Result{}, nil
 	}
 
 	// update status
-	err = r.Update(context.TODO(), instance)
+	err = r.Status().Update(context.TODO(), instance)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
-	return ctrl.Result{RequeueAfter: 500 * time.Millisecond}, nil
+	return ctrl.Result{}, nil
 }
 
 func (r *AtReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewControllerManagedBy(mgr).
+	err := ctrl.NewControllerManagedBy(mgr).
 		For(&cnatv1alpha1.At{}).
+		Owns(&corev1.Pod{}).
 		Complete(r)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
